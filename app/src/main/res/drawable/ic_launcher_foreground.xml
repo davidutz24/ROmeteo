@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 1. THE SUN (Yellow-Gold Gradient) -->
+    <!-- Sun Center Circle -->
+    <path android:pathData="M 45,45 m -16,0 a 16,16 0 1,1 32,0 a 16,16 0 1,1 -32,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="29"
+                android:startY="29"
+                android:endX="61"
+                android:endY="61"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFF176" /> <!-- Light Warm Yellow -->
+                <item android:offset="1.0" android:color="#F57C00" /> <!-- Rich Orange -->
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Radiating Sun Rays (Golden Accent) -->
+    <path
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 28,34 L 22,29 M 36,25 L 32,18 M 47,21 L 47,13 M 59,24 L 63,17 M 70,32 L 77,27 M 22,45 L 14,45 M 24,57 L 17,61">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="14"
+                android:startY="13"
+                android:endX="77"
+                android:endY="61"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFE082" />
+                <item android:offset="1.0" android:color="#FFA726" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. THE CLOUD (Fluffy White Gradient) -->
+    <path android:pathData="M 32,66 C 24,66 22,54 28,48 C 29,40 42,38 46,44 C 50,32 68,32 72,42 C 80,40 88,48 84,58 C 89,60 88,66 80,66 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="32"
+                android:startY="32"
+                android:endX="80"
+                android:endY="66"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFFFFF" />
+                <item android:offset="1.0" android:color="#E0F2F1" /> <!-- Soft Cloud White/Blue-Grey Hint -->
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 3. THE BACK WATER WAVE (Medium Cyan Gradient) -->
+    <path android:pathData="M 23,66 C 35,74 49,74 61,64 C 73,54 83,56 89,66 L 89,74 C 83,64 73,62 61,72 C 49,82 35,82 23,74 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="23"
+                android:startY="54"
+                android:endX="89"
+                android:endY="74"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#00BCD4" />
+                <item android:offset="1.0" android:color="#00838F" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4. THE FRONT WATER WAVE (Vivid Light Cyan Gradient) -->
+    <path android:pathData="M 22,72 C 34,80 48,80 60,70 C 72,60 82,62 88,72 L 88,80 C 82,70 72,68 60,78 C 48,88 34,88 22,80 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="22"
+                android:startY="60"
+                android:endX="88"
+                android:endY="80"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#4DE8F4" />
+                <item android:offset="1.0" android:color="#26C6DA" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+</vector>

@@ -1,0 +1,6 @@
+{
+  "name": "ROmeteo",
+  "description": "Aplicație meteorologică dedicată comunității din România.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
