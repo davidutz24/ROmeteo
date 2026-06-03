@@ -9,7 +9,7 @@ interface OpenMeteoApi {
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
         @Query("hourly") hourly: String = "temperature_2m,precipitation_probability,weather_code,wind_speed_10m",
-        @Query("daily") daily: String = "weather_code,temperature_2m_max,temperature_2m_min",
+        @Query("daily") daily: String = "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset",
         @Query("timezone") timezone: String = "auto",
         @Query("models") models: String? = null,
         @Query("forecast_days") forecastDays: Int? = null

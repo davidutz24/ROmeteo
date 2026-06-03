@@ -53,7 +53,9 @@ data class WeatherResponse(
             time = daily.getAsStringList("time"),
             weatherCode = daily.getAsIntList("weather_code"),
             temperature2mMax = hourly.getAsDoubleList("temperature_2m_max").takeIf { it.isNotEmpty() } ?: daily.getAsDoubleList("temperature_2m_max"),
-            temperature2mMin = hourly.getAsDoubleList("temperature_2m_min").takeIf { it.isNotEmpty() } ?: daily.getAsDoubleList("temperature_2m_min")
+            temperature2mMin = hourly.getAsDoubleList("temperature_2m_min").takeIf { it.isNotEmpty() } ?: daily.getAsDoubleList("temperature_2m_min"),
+            sunrise = daily.getAsStringList("sunrise"),
+            sunset = daily.getAsStringList("sunset")
         )
 }
 
@@ -69,7 +71,9 @@ data class DailyData(
     val time: List<String>,
     val weatherCode: List<Int?>,
     val temperature2mMax: List<Double?>,
-    val temperature2mMin: List<Double?>
+    val temperature2mMin: List<Double?>,
+    val sunrise: List<String> = emptyList(),
+    val sunset: List<String> = emptyList()
 )
 
 private fun Map<String, Any>.findKeyFor(keyPart: String): String? {

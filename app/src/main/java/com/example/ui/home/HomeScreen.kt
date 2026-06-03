@@ -38,9 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.translate
@@ -223,6 +225,25 @@ fun WeatherContent(
             }
         }
     }
+
+    fun checkIfNight(dateTime: java.time.LocalDateTime): Boolean {
+        val dateStr = dateTime.toLocalDate().toString() // "yyyy-MM-dd"
+        val index = daily.time.indexOfFirst { it == dateStr }
+        if (index != -1) {
+            val sunriseStr = daily.sunrise.getOrNull(index)
+            val sunsetStr = daily.sunset.getOrNull(index)
+            if (!sunriseStr.isNullOrBlank() && !sunsetStr.isNullOrBlank()) {
+                try {
+                    val sunrise = parseLocalDateTimeSafely(sunriseStr)
+                    val sunset = parseLocalDateTimeSafely(sunsetStr)
+                    return dateTime.isBefore(sunrise) || dateTime.isAfter(sunset)
+                } catch (e: Exception) {
+                    // Fallback below
+                }
+            }
+        }
+        return dateTime.hour < 6 || dateTime.hour > 20
+    }
     
     var currentIndex = 0
     for (i in hourly.time.indices) {
@@ -239,7 +260,7 @@ fun WeatherContent(
     val windSpeed = hourly.windSpeed10m.getOrNull(currentIndex) ?: 0.0
 
     // Determine background color based on time and weather
-    val isNight = now.hour < 6 || now.hour > 20
+    val isNight = checkIfNight(now)
     val targetBgColor = if (isNight) Color(0xFF1A1A2E) else Color(0xFF87CEEB)
     val bgColor by animateColorAsState(targetValue = targetBgColor, animationSpec = tween(1000))
 
@@ -317,6 +338,7 @@ fun WeatherContent(
                         ) {
                             WeatherIcon(
                                 code = weatherCode,
+                                isNight = isNight,
                                 modifier = Modifier.size(88.dp)
                             )
                             
@@ -449,8 +471,10 @@ fun WeatherContent(
                         val code = hourly.weatherCode.getOrNull(actualIndex) ?: 0
                         val precip = hourly.precipitationProbability.getOrNull(actualIndex)?.toString()?.let { "$it%" } ?: "N/A"
                         val wind = hourly.windSpeed10m.getOrNull(actualIndex) ?: 0.0
-                        val timeStr = hourly.time.getOrNull(actualIndex)?.substring(11, 16) ?: ""
+                        val fullTimeStr = hourly.time.getOrNull(actualIndex) ?: ""
+                        val timeStr = fullTimeStr.substring(11, 16)
                         
+                        val isHourNight = checkIfNight(parseLocalDateTimeSafely(fullTimeStr))
                         val isSelected = selectedHourIndex == actualIndex
                         
                         Column(
@@ -463,7 +487,11 @@ fun WeatherContent(
                         ) {
                             Text(timeStr, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                             Spacer(Modifier.height(8.dp))
-                            WeatherIcon(code = code, modifier = Modifier.size(36.dp))
+                            WeatherIcon(
+                                code = code,
+                                isNight = isHourNight,
+                                modifier = Modifier.size(36.dp)
+                            )
                             Spacer(Modifier.height(8.dp))
                             Text("${temp.toInt()}°", fontWeight = FontWeight.Bold)
                             
@@ -710,9 +738,21 @@ private fun getCurrentLocationAndFetchWeather(context: Context, viewModel: HomeV
     }
 }
 
+private fun getStarPath(center: Offset, size: Float): Path {
+    return Path().apply {
+        moveTo(center.x, center.y - size)
+        quadraticTo(center.x, center.y, center.x + size, center.y)
+        quadraticTo(center.x, center.y, center.x, center.y + size)
+        quadraticTo(center.x, center.y, center.x - size, center.y)
+        quadraticTo(center.x, center.y, center.x, center.y - size)
+        close()
+    }
+}
+
 @Composable
 fun WeatherIcon(
     code: Int,
+    isNight: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "icon_anim")
@@ -777,74 +817,159 @@ fun WeatherIcon(
         val h = size.height
         
         when (code) {
-            0 -> { // Clear sky (Sun)
-                val sunColor1 = Color(0xFFFFD54F)
-                val sunColor2 = Color(0xFFFF8F00)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(sunColor1, sunColor2),
-                        center = Offset(w * 0.5f, h * 0.5f),
-                        radius = w * 0.35f
-                    ),
-                    radius = w * 0.35f,
-                    center = Offset(w * 0.5f, h * 0.5f)
-                )
-                // Sun rays
-                val rayCount = 8
-                val innerRadius = w * 0.40f
-                val outerRadius = w * 0.50f
-                val rayWidth = w * 0.06f
-                
-                for (i in 0 until rayCount) {
-                    val angle = ((i * (360f / rayCount)) + sunAngle) * (Math.PI / 180f)
-                    val startX = (w * 0.5f + Math.cos(angle) * innerRadius).toFloat()
-                    val startY = (h * 0.5f + Math.sin(angle) * innerRadius).toFloat()
-                    val endX = (w * 0.5f + Math.cos(angle) * outerRadius).toFloat()
-                    val endY = (h * 0.5f + Math.sin(angle) * outerRadius).toFloat()
-                    
-                    drawLine(
-                        color = Color(0xFFFF8F00),
-                        start = Offset(startX, startY),
-                        end = Offset(endX, endY),
-                        strokeWidth = rayWidth,
-                        cap = StrokeCap.Round
+            0 -> { // Clear sky (Sun or Moon)
+                if (isNight) {
+                    // Draw glowing aura
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFFEF08A).copy(alpha = 0.25f), Color.Transparent),
+                            center = Offset(w * 0.52f, h * 0.48f),
+                            radius = w * 0.48f
+                        ),
+                        radius = w * 0.48f,
+                        center = Offset(w * 0.52f, h * 0.48f)
                     )
+                    
+                    val moonOuter = Path().apply {
+                        addOval(Rect(center = Offset(w * 0.52f, h * 0.48f), radius = w * 0.32f))
+                    }
+                    val moonInner = Path().apply {
+                        addOval(Rect(center = Offset(w * 0.40f, h * 0.40f), radius = w * 0.32f))
+                    }
+                    val crescentPath = Path.combine(
+                        operation = PathOperation.Difference,
+                        path1 = moonOuter,
+                        path2 = moonInner
+                    )
+                    
+                    drawPath(
+                        path = crescentPath,
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFFEF08A), Color(0xFFF1F5F9)),
+                            start = Offset(w * 0.3f, h * 0.3f),
+                            end = Offset(w * 0.7f, h * 0.7f)
+                        )
+                    )
+                    
+                    val starPath1 = getStarPath(Offset(w * 0.25f, h * 0.32f), w * 0.08f)
+                    val starPath2 = getStarPath(Offset(w * 0.72f, h * 0.62f), w * 0.05f)
+                    
+                    drawPath(
+                        path = starPath1,
+                        color = Color(0xFFFEF08A).copy(alpha = 0.9f)
+                    )
+                    drawPath(
+                        path = starPath2,
+                        color = Color(0xFFFEF08A).copy(alpha = 0.75f)
+                    )
+                } else {
+                    val sunColor1 = Color(0xFFFFD54F)
+                    val sunColor2 = Color(0xFFFF8F00)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(sunColor1, sunColor2),
+                            center = Offset(w * 0.5f, h * 0.5f),
+                            radius = w * 0.35f
+                        ),
+                        radius = w * 0.35f,
+                        center = Offset(w * 0.5f, h * 0.5f)
+                    )
+                    // Sun rays
+                    val rayCount = 8
+                    val innerRadius = w * 0.40f
+                    val outerRadius = w * 0.50f
+                    val rayWidth = w * 0.06f
+                    
+                    for (i in 0 until rayCount) {
+                        val angle = ((i * (360f / rayCount)) + sunAngle) * (Math.PI / 180f)
+                        val startX = (w * 0.5f + Math.cos(angle) * innerRadius).toFloat()
+                        val startY = (h * 0.5f + Math.sin(angle) * innerRadius).toFloat()
+                        val endX = (w * 0.5f + Math.cos(angle) * outerRadius).toFloat()
+                        val endY = (h * 0.5f + Math.sin(angle) * outerRadius).toFloat()
+                        
+                        drawLine(
+                            color = Color(0xFFFF8F00),
+                            start = Offset(startX, startY),
+                            end = Offset(endX, endY),
+                            strokeWidth = rayWidth,
+                            cap = StrokeCap.Round
+                        )
+                    }
                 }
             }
-            1, 2 -> { // Partly Cloudy (Sun + Cloud)
-                // Draw a smaller sun first with rotating rays
-                val sunColor1 = Color(0xFFFFD54F)
-                val sunColor2 = Color(0xFFFF8F00)
-                val sunCenter = Offset(w * 0.65f, h * 0.35f)
-                val innerRadius = w * 0.28f
-                val outerRadius = w * 0.35f
-                val rayWidth = w * 0.04f
-                val rayCount = 8
-
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(sunColor1, sunColor2),
-                        center = sunCenter,
-                        radius = w * 0.25f
-                    ),
-                    radius = w * 0.25f,
-                    center = sunCenter
-                )
-
-                for (i in 0 until rayCount) {
-                    val angle = ((i * (360f / rayCount)) + sunAngle) * (Math.PI / 180f)
-                    val startX = (sunCenter.x + Math.cos(angle) * innerRadius).toFloat()
-                    val startY = (sunCenter.y + Math.sin(angle) * innerRadius).toFloat()
-                    val endX = (sunCenter.x + Math.cos(angle) * outerRadius).toFloat()
-                    val endY = (sunCenter.y + Math.sin(angle) * outerRadius).toFloat()
-                    
-                    drawLine(
-                        color = Color(0xFFFF8F00),
-                        start = Offset(startX, startY),
-                        end = Offset(endX, endY),
-                        strokeWidth = rayWidth,
-                        cap = StrokeCap.Round
+            1, 2 -> { // Partly Cloudy (Sun/Moon + Cloud)
+                if (isNight) {
+                    val moonOuter = Path().apply {
+                        addOval(Rect(center = Offset(w * 0.65f, h * 0.35f), radius = w * 0.23f))
+                    }
+                    val moonInner = Path().apply {
+                        addOval(Rect(center = Offset(w * 0.56f, h * 0.29f), radius = w * 0.23f))
+                    }
+                    val crescentPath = Path.combine(
+                        operation = PathOperation.Difference,
+                        path1 = moonOuter,
+                        path2 = moonInner
                     )
+                    
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFFEF08A).copy(alpha = 0.20f), Color.Transparent),
+                            center = Offset(w * 0.65f, h * 0.35f),
+                            radius = w * 0.35f
+                        ),
+                        radius = w * 0.35f,
+                        center = Offset(w * 0.65f, h * 0.35f)
+                    )
+                    
+                    drawPath(
+                        path = crescentPath,
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFFEF08A), Color(0xFFE2E8F0)),
+                            start = Offset(w * 0.5f, h * 0.2f),
+                            end = Offset(w * 0.8f, h * 0.5f)
+                        )
+                    )
+                    
+                    val starPath = getStarPath(Offset(w * 0.42f, h * 0.24f), w * 0.05f)
+                    drawPath(
+                        path = starPath,
+                        color = Color(0xFFFEF08A).copy(alpha = 0.85f)
+                    )
+                } else {
+                    // Draw a smaller sun first with rotating rays
+                    val sunColor1 = Color(0xFFFFD54F)
+                    val sunColor2 = Color(0xFFFF8F00)
+                    val sunCenter = Offset(w * 0.65f, h * 0.35f)
+                    val innerRadius = w * 0.28f
+                    val outerRadius = w * 0.35f
+                    val rayWidth = w * 0.04f
+                    val rayCount = 8
+
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(sunColor1, sunColor2),
+                            center = sunCenter,
+                            radius = w * 0.25f
+                        ),
+                        radius = w * 0.25f,
+                        center = sunCenter
+                    )
+
+                    for (i in 0 until rayCount) {
+                        val angle = ((i * (360f / rayCount)) + sunAngle) * (Math.PI / 180f)
+                        val startX = (sunCenter.x + Math.cos(angle) * innerRadius).toFloat()
+                        val startY = (sunCenter.y + Math.sin(angle) * innerRadius).toFloat()
+                        val endX = (sunCenter.x + Math.cos(angle) * outerRadius).toFloat()
+                        val endY = (sunCenter.y + Math.sin(angle) * outerRadius).toFloat()
+                        
+                        drawLine(
+                            color = Color(0xFFFF8F00),
+                            start = Offset(startX, startY),
+                            end = Offset(endX, endY),
+                            strokeWidth = rayWidth,
+                            cap = StrokeCap.Round
+                        )
+                    }
                 }
                 
                 // Draw Cloud in front with drifting animation
